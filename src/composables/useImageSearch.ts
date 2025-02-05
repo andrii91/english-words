@@ -1,33 +1,42 @@
-import { ref } from "vue";
-import { createClient } from "pexels";
+import { ref, type Ref } from "vue";
 
-export const useImageSearch = () => {
-  const query = ref(""); // Пошуковий запит
-  const images = ref<any[]>([]); // Масив зображень
-  const isLoading = ref(false); // Статус завантаження
-  const errorMessage = ref(""); // Повідомлення про помилку
+interface ImageSearchResult {
+  images: Ref<any[]>;
+  isLoading: Ref<boolean>;
+  errorMessage: Ref<string>;
+  searchImages: (query: string) => Promise<void>;
+}
 
-  const apiKey = import.meta.env.VITE_PEXELS_API_KEY; // Ваш ключ від Pexels
-  const client = createClient(apiKey);
+export const useImageSearch = (): ImageSearchResult => {
+  const images = ref<any[]>([]);
+  const isLoading = ref(false);
+  const errorMessage = ref("");
 
-  const searchImages = async () => {
-    if (!query.value.trim()) return;
+  const apiKey = import.meta.env.VITE_PEXELS_API_KEY || "";
+
+  const searchImages = async (query: string) => {
+    if (!query.trim()) return;
 
     isLoading.value = true;
     errorMessage.value = "";
 
     try {
-      const response = await client.photos.search({
-        query: query.value,
-        per_page: 1, // Кількість зображень на сторінку
+      if (!apiKey) {
+        throw new Error("🚨 API-ключ Pexels не знайдено.");
+      }
+
+      const response = await fetch(`https://api.pexels.com/v1/search?query=${query}`, {
+        headers: {
+          Authorization: apiKey,
+        },
       });
 
-      // Перевірка, чи є в відповіді фотографії
-      if ('photos' in response) {
-        images.value = response.photos;
-      } else {
-        throw new Error("Невідома помилка");
+      if (!response.ok) {
+        throw new Error(`HTTP помилка! Статус: ${response.status}`);
       }
+
+      const data = await response.json();
+      images.value = Array.isArray(data.photos) ? data.photos : [];
     } catch (error) {
       errorMessage.value = "Не вдалося знайти зображення";
       console.error(error);
@@ -37,7 +46,6 @@ export const useImageSearch = () => {
   };
 
   return {
-    query,
     images,
     isLoading,
     errorMessage,
