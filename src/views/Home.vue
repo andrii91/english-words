@@ -15,6 +15,9 @@ onMounted(async () => {
 <template>
   <div class="home">
     <ul  class="home-links">
+      <li>
+        <router-link :to="{ name: 'irregular' }" > Irregular Verbs </router-link>
+      </li>
       <template v-if="!loading">
         <li v-for="col in collections" :key="col">
           <router-link :to="{ name: 'lesson', params: {lessonsId: col} }" > {{ decodeURIComponent(col) }} </router-link>

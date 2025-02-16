@@ -1,79 +1,69 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from "vue";
+import { ref, onMounted, computed, nextTick, watch } from "vue";
 import { useFirestoreCollections } from "../composables/useFirestoreCollections";
 import { useSpeechSynthesis } from '../composables/useSpeechSynthesis';
 import { useImageSearch } from "../composables/useImageSearch";
-import type { WordType } from "../types";
-import { useRoute } from "vue-router";
 import Skeketon from "../components/Skeketon.vue";
 import ImageLazy from "../components/ImageLazy.vue";
 
 const { images, searchImages } = useImageSearch(); 
 const { speak } = useSpeechSynthesis();
 const { getItems } = useFirestoreCollections();
-const route = useRoute();
 
-const dbName  = ref(route.params.lessonsId);
-const items = ref([] as WordType[]);
+const items = ref([] as any[]);
 const currentIndex = ref(0);
 const loading = ref(true);
 const startX = ref(0);
 
 const fetchItems = async () => {
-  items.value = await getItems(dbName.value as string);
+  items.value = await getItems("irregularVerbs");
   await nextTick();
-  await searchImages(items.value[currentIndex.value].word);
+  searchImages(items.value[currentIndex.value].infinitive);
   loading.value = false;
 };
 
-const isPrevDisabled = computed(():boolean => {
-  return currentIndex.value === 0;
-})
-
-const isNextDisabled = computed(():boolean => {
-  return currentIndex.value == (items.value.length - 1);
-})
+const isPrevDisabled = computed((): boolean => currentIndex.value === 0);
+const isNextDisabled = computed((): boolean => currentIndex.value === (items.value.length - 1));
 
 onMounted(fetchItems);
 
-const nextIndex = () => {
-  if((items.value.length - 1) > currentIndex.value) {
-    currentIndex.value++;
-    searchImages(items.value[currentIndex.value].word);
+// Використовуємо watch для автоматичного оновлення зображень при зміні currentIndex
+watch(currentIndex, (newIndex) => {
+  if (items.value.length > 0 && items.value[newIndex]) {
+    searchImages(items.value[newIndex].infinitive);
   }
+});
 
+const nextIndex = () => {
+  if (currentIndex.value < items.value.length - 1) {
+    currentIndex.value++;
+  }
   return false;
-}
+};
 
 const prevIndex = () => {
-  if(currentIndex.value > 0) {
+  if (currentIndex.value > 0) {
     currentIndex.value--;
-    searchImages(items.value[currentIndex.value].word);
   }
-
   return false;
-}
+};
 
 const onTouchStart = (event: TouchEvent) => {
   startX.value = event.touches[0].clientX;
 };
 
 const onTouchEnd = (event: TouchEvent) => {
-  // Отримуємо фінальну позицію відпускання пальця
   const endXValue = event.changedTouches[0].clientX;
   const diffX = startX.value - endXValue;
 
   if (diffX > 50) {
-    // Свайп вліво – переходимо до наступного запису
     nextIndex();
   } else if (diffX < -50) {
-    // Свайп вправо – повертаємося до попереднього запису
     prevIndex();
   }
 };
-
-
 </script>
+
 
 <template>
   <div>
@@ -88,12 +78,10 @@ const onTouchEnd = (event: TouchEvent) => {
       <ImageLazy v-else class="card-image" src="#" alt="Error" />
       <img v-if="images.length"  />
       <div class="card-word">
-        {{ items[currentIndex].word }}
-        <img class="card-transcription-on" @click="speak(items[currentIndex].word)" src="../assets/analyze-sound-wave-icon.svg" alt="Vue logo" />
+        {{ items[currentIndex].infinitive }} / {{ items[currentIndex].past_simple }} / {{ items[currentIndex].past_participle }} 
+        <img class="card-transcription-on" @click="speak(`${items[currentIndex].infinitive} ${items[currentIndex].past_simple} ${items[currentIndex].past_participle}`)" src="../assets/analyze-sound-wave-icon.svg" alt="Vue logo" />
       </div>
-      <div class="card-transcription">
-        {{ items[currentIndex].transcription }}
-      </div>
+     
       <div class="card-translation">
         {{ items[currentIndex].translation }}
       </div>
@@ -102,7 +90,8 @@ const onTouchEnd = (event: TouchEvent) => {
         <button :disabled="isPrevDisabled" @click="prevIndex"><svg class="icon"><use xlink:href="#arrow-left"></use></svg></button>
         <button :disabled="isNextDisabled" @click="nextIndex"><svg class="icon"><use xlink:href="#arrow-right"></use></svg></button>
       </div>
-      
+
+      <span @click="currentIndex = currentIndex + 10">go next 10</span>
     </div>
   
     <Skeketon v-else class="card" />
@@ -160,6 +149,7 @@ const onTouchEnd = (event: TouchEvent) => {
     align-items: center;
     justify-content: space-between;
 
+
     button {
       font-size: 24px;
     }
@@ -172,6 +162,14 @@ const onTouchEnd = (event: TouchEvent) => {
 
   .count {
     text-align: right;
+  }
+
+
+  span {
+    margin-top: auto;
+    font-weight: 700;
+    padding: 6px 2px;
+    cursor: pointer;
   }
 }
 </style>

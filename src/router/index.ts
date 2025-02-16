@@ -28,6 +28,16 @@ const router = createRouter({
       name: "add",
       component: () => import("../views/AddWords.vue"),
     },
+    {
+      path: "/irregular-verbs",
+      name: "irregular",
+      component: () => import("../views/IrregularVerbs.vue"),
+    },
+    {
+      path: "/upload",
+      name: "upload",
+      component: () => import("../views/addFullItems.vue"),
+    },
   ],
 });
 
